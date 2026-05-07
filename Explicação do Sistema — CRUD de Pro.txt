@@ -1,0 +1,21 @@
+Explicação do Sistema — CRUD de Produtos
+
+O sistema desenvolvido é uma aplicação web completa para gerenciamento de produtos de uma loja virtual, utilizando HTML, CSS e JavaScript no front-end, Node.js com Express no back-end e SQLite como banco de dados.
+
+- Como funciona o DELETE?
+Ao clicar no botão "✕" ao lado de um produto, uma janela de confirmação aparece perguntando "Tem certeza?". Se confirmado, o front-end envia uma requisição fetch() com o método DELETE para a rota /produtos/:id no Express. O servidor então executa o comando DELETE FROM produtos WHERE id = ? no SQLite e retorna uma confirmação. A lista é atualizada automaticamente na tela.
+
+- Como funciona o UPDATE?
+Ao clicar em "Editar", os dados do produto (nome e preço) são carregados automaticamente no formulário. O usuário faz as alterações e clica em salvar. O front-end envia uma requisição fetch() com o método PUT para a rota /produtos/:id, passando os novos dados em formato JSON. O Express executa o UPDATE no banco e a lista é recarregada na tela.
+
+- Onde foi feita a soma dos valores?
+A soma total dos preços é calculada no front-end, dentro da função atualizarStats(), usando o método .reduce() do JavaScript após cada carregamento da lista. O resultado é exibido em tempo real no card "Soma dos Preços".
+Funcionalidades extras implementadas:
+
+- Confirmação antes de excluir (modal "Tem certeza?")
+
+-Produtos acima de R$ 1.000 destacados com a tag CARO
+-Botão "Limpar tudo" com confirmação
+-Busca por nome com filtro no back-end
+-Relatório com total de produtos, soma e preço médio
+-Ordenação por nome ou preço
