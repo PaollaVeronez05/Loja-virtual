@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Loja Virtual — Sistema de Produtos</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  
+</head>
+<body>
+
+<header>
+  <div class="logo">loja<span>.</span>dev</div>
+  <span class="badge">CRUD COMPLETO</span>
+</header>
+
+<div class="layout">
+
+  <!-- ── PAINEL ESQUERDO ── -->
+  <aside class="panel-left">
+
+    <!-- Formulário -->
+    <div>
+      <div class="section-title">▸ Gerenciar</div>
+      <div class="form-card">
+        <div class="form-title">
+          <span class="icon" id="form-icon">＋</span>
+          <span id="form-title-text">Novo Produto</span>
+        </div>
+        <input type="hidden" id="edit-id"/>
+        <div class="form-group">
+          <label>NOME DO PRODUTO</label>
+          <input type="text" id="input-nome" placeholder="ex: Notebook Dell XPS"/>
+        </div>
+        <div class="form-group">
+          <label>PREÇO (R$)</label>
+          <input type="number" id="input-preco" placeholder="ex: 3500.00" step="0.01" min="0"/>
+        </div>
+        <button class="btn btn-primary" onclick="salvarProduto()">
+          <span id="btn-salvar-icon">＋</span>
+          <span id="btn-salvar-text">Cadastrar Produto</span>
+        </button>
+        <button class="btn btn-cancel" id="btn-cancelar" style="display:none" onclick="cancelarEdicao()">
+          ✕ Cancelar Edição
+        </button>
+      </div>
+    </div>
+
+    <!-- Busca -->
+    <div>
+      <div class="section-title">▸ Busca</div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="input-busca" placeholder="Filtrar por nome..." oninput="buscarProdutos()"/>
+      </div>
+    </div>
+
+    <!-- Ações globais -->
+    <div>
+      <div class="section-title">▸ Ações</div>
+      <button class="btn btn-danger-outline btn-sm" onclick="confirmarLimparTudo()">
+        🗑 Limpar Todos os Produtos
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ── PAINEL DIREITO ── -->
+  <main class="panel-right">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card purple">
+        <div class="stat-label">Total de Produtos</div>
+        <div class="stat-value" id="stat-total">0</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">Soma dos Preços</div>
+        <div class="stat-value" id="stat-soma">R$ 0</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Preço Médio</div>
+        <div class="stat-value" id="stat-media">R$ 0</div>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div>
+      <div class="products-header">
+        <div class="section-title" style="margin-bottom:0">▸ Relatório de Produtos</div>
+        <div style="display:flex;gap:0.5rem">
+          <button class="sort-btn" id="sort-nome" onclick="ordenar('nome')">↕ Nome</button>
+          <button class="sort-btn" id="sort-preco" onclick="ordenar('preco')">↕ Preço</button>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="margin-top:1rem">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Produto</th>
+              <th>Preço</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-corpo">
+            <tr>
+              <td colspan="4">
+                <div class="empty-state">
+                  <div class="emoji">📦</div>
+                  <p>Nenhum produto cadastrado ainda.</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal de confirmação de exclusão -->
+<div class="modal-overlay" id="modal-del">
+  <div class="modal">
+    <h3>⚠️ Confirmar exclusão</h3>
+    <p id="modal-del-msg">Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.</p>
+    <div class="modal-actions">
+      <button class="btn btn-modal-cancel btn-sm" onclick="fecharModal('modal-del')">Cancelar</button>
+      <button class="btn btn-confirm-del btn-sm" id="btn-confirmar-del" onclick="confirmarDelecao()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmação de limpar tudo -->
+<div class="modal-overlay" id="modal-limpar">
+  <div class="modal">
+    <h3>🧨 Limpar tudo?</h3>
+    <p>Todos os produtos serão removidos permanentemente do banco de dados. Tem certeza absoluta?</p>
+    <div class="modal-actions">
+      <button class="btn btn-modal-cancel btn-sm" onclick="fecharModal('modal-limpar')">Cancelar</button>
+      <button class="btn btn-confirm-del btn-sm" onclick="limparTudo()">Sim, limpar tudo</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API = 'http://localhost:3000';
+
+  let produtos = [];
+  let ordemAtual = { campo: 'nome', asc: true };
+  let delIdPendente = null;
+
+  // ── Inicialização ──
+  carregarProdutos();
+
+  // ── FETCH: Carregar produtos ──
+  async function carregarProdutos() {
+    const busca = document.getElementById('input-busca').value;
+    const url = busca.trim() ? `${API}/produtos?busca=${encodeURIComponent(busca)}` : `${API}/produtos`;
+    try {
+      const res = await fetch(url);
+      produtos = await res.json();
+      aplicarOrdem();
+      renderizarTabela();
+      atualizarStats();
+    } catch (err) {
+      toast('Erro ao conectar com o servidor.', 'error');
+    }
+  }
+
+  // ── Busca ──
+  function buscarProdutos() { carregarProdutos(); }
+
+  // ── Ordenação ──
+  function ordenar(campo) {
+    if (ordemAtual.campo === campo) {
+      ordemAtual.asc = !ordemAtual.asc;
+    } else {
+      ordemAtual.campo = campo;
+      ordemAtual.asc = true;
+    }
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`sort-${campo}`).classList.add('active');
+    aplicarOrdem();
+    renderizarTabela();
+  }
+
+  function aplicarOrdem() {
+    const { campo, asc } = ordemAtual;
+    produtos.sort((a, b) => {
+      let va = campo === 'preco' ? a.preco : a.nome.toLowerCase();
+      let vb = campo === 'preco' ? b.preco : b.nome.toLowerCase();
+      if (va < vb) return asc ? -1 : 1;
+      if (va > vb) return asc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  // ── Renderizar tabela ──
+  function renderizarTabela() {
+    const tbody = document.getElementById('tabela-corpo');
+    if (produtos.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="4">
+          <div class="empty-state">
+            <div class="emoji">📦</div>
+            <p>Nenhum produto encontrado.</p>
+          </div>
+        </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = produtos.map(p => {
+      const caro = p.preco > 1000;
+      return `
+        <tr class="${caro ? 'expensive' : ''}">
+          <td class="col-id">${p.id}</td>
+          <td class="col-nome">
+            ${escHtml(p.nome)}
+            ${caro ? '<span class="tag-caro">CARO</span>' : ''}
+          </td>
+          <td class="col-preco ${caro ? 'high' : 'normal'}">
+            ${formatPreco(p.preco)}
+          </td>
+          <td class="col-acoes">
+            <div class="acoes-wrap">
+              <button class="btn btn-edit btn-sm" onclick="iniciarEdicao(${p.id})">✎ Editar</button>
+              <button class="btn btn-del btn-sm" onclick="abrirModalDel(${p.id}, '${escHtml(p.nome)}')">✕</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ── Stats ──
+  function atualizarStats() {
+    const total = produtos.length;
+    const soma = produtos.reduce((acc, p) => acc + p.preco, 0);
+    const media = total > 0 ? soma / total : 0;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-soma').textContent = formatPreco(soma);
+    document.getElementById('stat-media').textContent = formatPreco(media);
+  }
+
+  // ── SALVAR (CREATE ou UPDATE) ──
+  async function salvarProduto() {
+    const nome = document.getElementById('input-nome').value.trim();
+    const preco = parseFloat(document.getElementById('input-preco').value);
+    const editId = document.getElementById('edit-id').value;
+
+    if (!nome) { toast('Informe o nome do produto.', 'error'); return; }
+    if (isNaN(preco) || preco < 0) { toast('Informe um preço válido.', 'error'); return; }
+
+    try {
+      let res, data;
+      if (editId) {
+        // UPDATE
+        res = await fetch(`${API}/produtos/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, preco })
+        });
+      } else {
+        // CREATE
+        res = await fetch(`${API}/produtos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, preco })
+        });
+      }
+
+      data = await res.json();
+      if (!res.ok) { toast(data.erro || 'Erro ao salvar.', 'error'); return; }
+
+      toast(editId ? `"${nome}" atualizado!` : `"${nome}" cadastrado!`, 'success');
+      limparFormulario();
+      carregarProdutos();
+    } catch (err) {
+      toast('Erro de conexão com o servidor.', 'error');
+    }
+  }
+
+  // ── INICIAR EDIÇÃO ──
+  function iniciarEdicao(id) {
+    const p = produtos.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('edit-id').value = p.id;
+    document.getElementById('input-nome').value = p.nome;
+    document.getElementById('input-preco').value = p.preco;
+    document.getElementById('form-icon').textContent = '✎';
+    document.getElementById('form-title-text').textContent = 'Editar Produto';
+    document.getElementById('btn-salvar-icon').textContent = '✔';
+    document.getElementById('btn-salvar-text').textContent = 'Salvar Alterações';
+    document.getElementById('btn-cancelar').style.display = 'flex';
+    document.getElementById('input-nome').focus();
+  }
+
+  function cancelarEdicao() { limparFormulario(); }
+
+  function limparFormulario() {
+    document.getElementById('edit-id').value = '';
+    document.getElementById('input-nome').value = '';
+    document.getElementById('input-preco').value = '';
+    document.getElementById('form-icon').textContent = '＋';
+    document.getElementById('form-title-text').textContent = 'Novo Produto';
+    document.getElementById('btn-salvar-icon').textContent = '＋';
+    document.getElementById('btn-salvar-text').textContent = 'Cadastrar Produto';
+    document.getElementById('btn-cancelar').style.display = 'none';
+  }
+
+  // ── DELETE ──
+  function abrirModalDel(id, nome) {
+    delIdPendente = id;
+    document.getElementById('modal-del-msg').textContent =
+      `Tem certeza que deseja excluir "${nome}"? Esta ação não pode ser desfeita.`;
+    document.getElementById('modal-del').classList.add('open');
+  }
+
+  async function confirmarDelecao() {
+    if (!delIdPendente) return;
+    fecharModal('modal-del');
+    try {
+      const res = await fetch(`${API}/produtos/${delIdPendente}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) { toast(data.erro || 'Erro ao excluir.', 'error'); return; }
+      toast('Produto excluído com sucesso.', 'success');
+      carregarProdutos();
+    } catch {
+      toast('Erro de conexão.', 'error');
+    } finally {
+      delIdPendente = null;
+    }
+  }
+
+  // ── LIMPAR TUDO ──
+  function confirmarLimparTudo() {
+    document.getElementById('modal-limpar').classList.add('open');
+  }
+
+  async function limparTudo() {
+    fecharModal('modal-limpar');
+    try {
+      await fetch(`${API}/produtos`, { method: 'DELETE' });
+      toast('Todos os produtos foram removidos.', 'info');
+      carregarProdutos();
+    } catch {
+      toast('Erro de conexão.', 'error');
+    }
+  }
+
+  // ── UTILITÁRIOS ──
+  function fecharModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  function formatPreco(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toast(msg, tipo = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${tipo}`;
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => { el.classList.remove('show'); }, 2800);
+  }
+
+  // Fechar modal ao clicar fora
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+  });
+
+  // Enter no formulário
+  document.getElementById('input-preco').addEventListener('keydown', e => {
+    if (e.key === 'Enter') salvarProduto();
+  });
+</script>
+</body>
+</html>
