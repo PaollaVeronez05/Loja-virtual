@@ -240,13 +240,15 @@ npm install better-sqlite3 --build-from-source
 ```
 
 ---
-
 ## 👥 Participantes
 
 | Nome | E-mail |
 |---|---|
 | Paolla Veronez | [paollap.veronez@gmail.com](mailto:paollap.veronez@gmail.com) |
 | Rafaela Oliveira | [rafaelacristina1510.oliveira@gmail.com](mailto:rafaelacristina1510.oliveira@gmail.com) |
+| Isabella Radael | [isabella.radael09@gmail.com](mailto:isabella.radael09@gmail.com) |
+| Rafael Brecci | [fbrecci@gmail.com](mailto:fbrecci@gmail.com) |
+| Eduardo Zanetti | [eduardozanettiluis@gmail.com](mailto:eduardozanettiluis@gmail.com) |
 
 ---
 
